@@ -330,6 +330,12 @@ class TargetManager {
             return;
         }
         
+        // Show time-up message after 2 waves
+        if (this.waveNumber === 2) {
+            this.showTimeUpMessage();
+            return;
+        }
+        
         // Show wave complete message
         const waveCompleteMessage = document.createElement('div');
         waveCompleteMessage.style.position = 'fixed';
@@ -385,6 +391,43 @@ class TargetManager {
                 document.body.removeChild(incomingWaveMessage);
             }, 2000);
         }, this.waveCooldown);
+    }
+    
+    showTimeUpMessage() {
+        this.gameActive = false;
+        
+        const timeUpScreen = document.createElement('div');
+        timeUpScreen.style.position = 'fixed';
+        timeUpScreen.style.top = '50%';
+        timeUpScreen.style.left = '50%';
+        timeUpScreen.style.transform = 'translate(-50%, -50%)';
+        timeUpScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        timeUpScreen.style.color = 'white';
+        timeUpScreen.style.padding = '40px';
+        timeUpScreen.style.borderRadius = '15px';
+        timeUpScreen.style.textAlign = 'center';
+        timeUpScreen.style.width = '500px';
+        timeUpScreen.style.zIndex = '1000';
+        timeUpScreen.innerHTML = `
+            <h1 style="font-size: 36px; margin-bottom: 20px;">Time's Up!</h1>
+            <p style="font-size: 24px; margin-bottom: 20px;">Your session has ended.</p>
+            <p style="font-size: 20px; margin-bottom: 30px;">Please join another session to continue playing.</p>
+        `;
+        document.body.appendChild(timeUpScreen);
+        
+        // Stop all game activity
+        this.targets.forEach(target => target.hide());
+        this.stopSpawning();
+        
+        // Stop background music
+        if (window.audioManager) {
+            window.audioManager.stopBGM();
+        }
+        
+        // Disable all game controls
+        document.removeEventListener('keydown', window.player.keydownHandler);
+        document.removeEventListener('keyup', window.player.keyupHandler);
+        document.removeEventListener('mousemove', window.player.mousemoveHandler);
     }
     
     victory() {

@@ -214,29 +214,69 @@ class Player {
     }
     
     initControls() {
-        // Pointer lock setup
-        const canvas = document.querySelector('canvas');
-        canvas.addEventListener('click', () => {
-            canvas.requestPointerLock();
-        });
-
-        // Mouse Movement
-        document.addEventListener('mousemove', (event) => {
-            if (document.pointerLockElement === canvas) {
-                this.mouseX = event.movementX;
-                // Rotate camera left/right only
-                this.camera.rotation.y -= this.mouseX * this.turnSpeed;
+        // Keyboard controls
+        this.keydownHandler = (event) => {
+            this.keyboard[event.key.toLowerCase()] = true;
+        };
+        
+        this.keyupHandler = (event) => {
+            this.keyboard[event.key.toLowerCase()] = false;
+        };
+        
+        this.mousemoveHandler = (event) => {
+            if (document.pointerLockElement === document.body) {
+                // Calculate rotation based on mouse movement
+                const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+                
+                // Debug log
+                console.log('Mouse movement:', movementX);
+                
+                // Only rotate around Y-axis (horizontal)
+                this.camera.rotation.y -= movementX * this.turnSpeed;
+                // Keep vertical rotation fixed
+                this.camera.rotation.x = 0;
+                
+                // Debug log
+                console.log('Camera rotation:', this.camera.rotation.y);
+            }
+        };
+        
+        // Add pointer lock event listeners
+        document.addEventListener('pointerlockchange', () => {
+            console.log('Pointer lock state changed:', document.pointerLockElement === document.body);
+            if (document.pointerLockElement === document.body) {
+                // Pointer is locked
+                this.camera.rotation.x = 0; // Reset vertical rotation
+                // Add mousemove listener when pointer is locked
+                document.addEventListener('mousemove', this.mousemoveHandler);
+            } else {
+                // Remove mousemove listener when pointer is unlocked
+                document.removeEventListener('mousemove', this.mousemoveHandler);
             }
         });
 
-        // Keyboard event listeners
-        document.addEventListener('keydown', (event) => {
-            this.keyboard[event.key.toLowerCase()] = true;
+        // Add pointer lock error handler
+        document.addEventListener('pointerlockerror', (error) => {
+            console.error('Pointer lock error:', error);
         });
-
-        document.addEventListener('keyup', (event) => {
-            this.keyboard[event.key.toLowerCase()] = false;
-        });
+        
+        document.addEventListener('keydown', this.keydownHandler);
+        document.addEventListener('keyup', this.keyupHandler);
+        
+        // Request pointer lock on canvas click
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+            canvas.addEventListener('click', () => {
+                console.log('Canvas clicked, requesting pointer lock');
+                if (!document.pointerLockElement) {
+                    // Request pointer lock on document.body
+                    document.body.requestPointerLock = document.body.requestPointerLock || 
+                                                      document.body.mozRequestPointerLock || 
+                                                      document.body.webkitRequestPointerLock;
+                    document.body.requestPointerLock();
+                }
+            });
+        }
     }
     
     // Check if player position would collide with any colliders

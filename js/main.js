@@ -26,7 +26,23 @@ function init() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
+    
+    // Make canvas focusable for pointer lock
+    const canvas = renderer.domElement;
+    canvas.tabIndex = 1;
+    canvas.style.outline = 'none';
+    canvas.style.cursor = 'pointer'; // Add pointer cursor to indicate clickable
+    document.body.appendChild(canvas);
+
+    // Add pointer lock error handler
+    document.addEventListener('pointerlockerror', (error) => {
+        console.error('Pointer lock error:', error);
+    });
+
+    // Add pointer lock change handler
+    document.addEventListener('pointerlockchange', () => {
+        console.log('Pointer lock state changed:', document.pointerLockElement === document.body);
+    });
 
     // Add lighting
     setupLights();
@@ -189,10 +205,14 @@ function togglePause() {
         pauseIcon.textContent = '⏸️';
         pauseLabel.textContent = 'Pause';
         // Request pointer lock when resuming
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-            canvas.requestPointerLock();
-        }
+        setTimeout(() => {
+            if (!document.pointerLockElement) {
+                document.body.requestPointerLock = document.body.requestPointerLock || 
+                                                 document.body.mozRequestPointerLock || 
+                                                 document.body.webkitRequestPointerLock;
+                document.body.requestPointerLock();
+            }
+        }, 100);
         audioManager.playSound('bgm');
     }
 }
@@ -495,10 +515,14 @@ window.showQuizPanel = function(callback) {
         animate();
         
         // Re-request pointer lock for camera movement
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-            canvas.requestPointerLock();
-        }
+        setTimeout(() => {
+            if (!document.pointerLockElement) {
+                document.body.requestPointerLock = document.body.requestPointerLock || 
+                                                 document.body.mozRequestPointerLock || 
+                                                 document.body.webkitRequestPointerLock;
+                document.body.requestPointerLock();
+            }
+        }, 100); // Small delay to ensure the panel is fully hidden
         
         // Call the callback with earned bullets
         if (callback) {
