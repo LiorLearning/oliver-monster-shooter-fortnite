@@ -45,7 +45,11 @@ class AudioManager {
             source.connect(this.bgmGain);
             this.isBGMPlaying = true;
         } else {
-            source.connect(this.audioContext.destination);
+            // Create gain node for sound effects and set volume to 30%
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = 0.1;
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
         }
         
         source.start(0);

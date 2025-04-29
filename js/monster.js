@@ -1,12 +1,18 @@
 // Monster targets and target management
 
 class MonsterTarget {
-    constructor(scene, position) {
+    constructor(scene, position, spriteFile = 'assets/monster_sprite.png') {
         this.scene = scene;
         this.sprite = null;
         this.active = false;
-        this.health = 100;
-        this.baseSpeed = 0.04;
+        
+        // Determine wave number from sprite file for difficulty scaling
+        const waveMatch = spriteFile.match(/monster_sprite_(\d+)/);
+        const waveNumber = waveMatch ? parseInt(waveMatch[1]) : 0;
+        
+        // Scale health and speed based on wave number
+        this.health = 100 + (waveNumber * 20); // Increase health for later waves
+        this.baseSpeed = 0.04 + (waveNumber * 0.005); // Slightly increase speed
         this.speed = this.baseSpeed;
         this.damageTimer = 0;
         
@@ -15,10 +21,10 @@ class MonsterTarget {
         this.strafeTime = 0;
         this.strafeDuration = 0;
         this.lastDodgeTime = 0;
-        this.dodgeCooldown = 800;
+        this.dodgeCooldown = Math.max(800 - (waveNumber * 50), 500); // Reduce dodge cooldown (more frequent dodges)
         this.movementState = 'pursue';
         this.dodgeDirection = new THREE.Vector3();
-        this.aggressionLevel = 0.3 + Math.random() * 0.3;
+        this.aggressionLevel = 0.3 + Math.random() * 0.3 + (waveNumber * 0.1); // Increase aggression
         
         // Animation variables
         this.breathTime = 0;
@@ -27,7 +33,7 @@ class MonsterTarget {
         
         // Load the monster image as a sprite
         const loader = new THREE.TextureLoader();
-        loader.load('assets/monster_sprite.png', (texture) => {
+        loader.load(spriteFile, (texture) => {
             // Ensure texture is properly set up
             texture.minFilter = THREE.LinearFilter;
             texture.magFilter = THREE.LinearFilter;
@@ -60,7 +66,7 @@ class MonsterTarget {
         if (this.sprite) {
             this.sprite.visible = true;
             this.active = true;
-            this.health = 100;
+            this.initialHealth = this.health; // Store the initial health
             // Pop-up animation
             this.sprite.scale.set(0.1, 0.1, 0.1);
             const targetScale = 2.5;
@@ -100,7 +106,10 @@ class MonsterTarget {
     }
     
     hit() {
-        this.health -= 34;
+        const damagePercent = 34; // Damage is now a percentage of total health
+        const damage = Math.ceil(this.initialHealth * (damagePercent / 100));
+        this.health -= damage;
+        
         // Enhanced hit effect with glow
         if (this.sprite) {
             const originalScale = this.sprite.scale.clone();
@@ -250,6 +259,27 @@ class TargetManager {
         this.isWaveCooldown = false;
         this.waveNumber = 0;
         
+        // Create monsters remaining display
+        this.monstersRemainingElement = document.createElement('div');
+        this.monstersRemainingElement.id = 'monsters-remaining';
+        this.monstersRemainingElement.style.position = 'fixed';
+        this.monstersRemainingElement.style.top = '70px';
+        this.monstersRemainingElement.style.right = '20px';
+        this.monstersRemainingElement.style.color = 'white';
+        this.monstersRemainingElement.style.fontSize = '20px';
+        this.monstersRemainingElement.style.textShadow = '2px 2px 4px black';
+        document.body.appendChild(this.monstersRemainingElement);
+        this.updateMonstersRemaining();
+        
+        // Monster sprite files for each wave
+        this.monsterSprites = [
+            'assets/monster_sprite.png',
+            'assets/monster_sprite_2.png',
+            'assets/monster_sprite_3.png',
+            'assets/monster_sprite_4.png',
+            'assets/monster_sprite_5.png'
+        ];
+        
         // Create potential spawn positions (we'll filter these based on player position)
         this.spawnPositions = [
             new THREE.Vector3(-8, 1.5, -8),
@@ -271,10 +301,23 @@ class TargetManager {
             new THREE.Vector3(-9, 1.5, 5)
         ];
         
-        // Create a target for each spawn position
-        this.spawnPositions.forEach(position => {
-            this.targets.push(new MonsterTarget(scene, position));
+        // Create targets for each monster type
+        this.createTargetsForAllWaves();
+    }
+    
+    createTargetsForAllWaves() {
+        // Create a set of targets for each sprite/wave
+        this.monsterSprites.forEach((spriteFile, index) => {
+            this.spawnPositions.forEach(position => {
+                this.targets.push(new MonsterTarget(this.scene, position, spriteFile));
+            });
         });
+    }
+    
+    getCurrentWaveSprite() {
+        // Get the appropriate sprite for the current wave (0-indexed)
+        const spriteIndex = Math.min(this.waveNumber, this.monsterSprites.length - 1);
+        return this.monsterSprites[spriteIndex];
     }
     
     startSpawning() {
@@ -295,12 +338,25 @@ class TargetManager {
             
             // Only spawn if we haven't reached the wave size limit
             if (this.monstersSpawnedInWave < this.waveSize && Math.random() < 0.3) {
-                const inactiveTargets = this.targets.filter(t => !t.active);
-                if (inactiveTargets.length > 0) {
+                // Get the current wave's sprite
+                const currentSprite = this.getCurrentWaveSprite();
+                const currentWaveIndex = Math.min(this.waveNumber, this.monsterSprites.length - 1);
+                
+                // Calculate the range of targets for the current wave
+                const targetsPerWave = this.spawnPositions.length;
+                const startIndex = currentWaveIndex * targetsPerWave;
+                const endIndex = startIndex + targetsPerWave;
+                
+                // Get inactive targets for the current wave
+                const matchingInactiveTargets = this.targets
+                    .slice(startIndex, endIndex)
+                    .filter(t => !t.active);
+                
+                if (matchingInactiveTargets.length > 0) {
                     const safePosition = this.getSafeSpawnPosition();
                     
                     if (safePosition) {
-                        const availableTarget = inactiveTargets.find(t => 
+                        const availableTarget = matchingInactiveTargets.find(t => 
                             !this.targets.some(activeTarget => 
                                 activeTarget.active && 
                                 activeTarget.sprite.position.distanceTo(safePosition) < 2
@@ -324,11 +380,19 @@ class TargetManager {
         this.monstersSpawnedInWave = 0;
         this.waveNumber++;
         
+        // Update monsters remaining display
+        this.updateMonstersRemaining();
+        
         // Check if all waves are completed
         if (this.waveNumber >= this.totalWaves) {
             this.victory();
             return;
         }
+        
+        // Get the next wave's monster type name
+        const nextWaveType = this.waveNumber < this.monsterSprites.length - 1 ? 
+            `Monster Type ${this.waveNumber + 1}` : 
+            "Final Boss Monster";
         
         // Show wave complete message
         const waveCompleteMessage = document.createElement('div');
@@ -405,7 +469,11 @@ class TargetManager {
             <h1 style="font-size: 36px; margin-bottom: 20px;">VICTORY!</h1>
             <p style="font-size: 24px; margin-bottom: 10px;">You have completed all ${this.totalWaves} waves!</p>
             <p style="font-size: 24px; margin-bottom: 20px;">Final Score: ${this.score}</p>
-            <button onclick="location.reload()" style="padding: 15px 30px; font-size: 20px; background-color: gold; color: black; border: none; border-radius: 5px; cursor: pointer;">
+            <div style="background-color: #ff6b00; color: white; padding: 10px; margin: 15px 0; border-radius: 5px;">
+                <p style="font-size: 22px; margin: 0;">COMING SOON</p>
+                <p style="font-size: 18px; margin: 5px 0;">Next level being designed by Oliver!</p>
+            </div>
+            <button onclick="location.reload()" style="padding: 15px 30px; font-size: 20px; background-color: gold; color: black; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
                 Play Again
             </button>
         `;
@@ -535,6 +603,7 @@ class TargetManager {
                         this.score += 100;
                         this.scoreElement.textContent = this.score;
                         this.monstersKilledInWave++; // Increment killed monsters counter
+                        this.updateMonstersRemaining(); // Update display after killing a monster
                     }
                     return true;
                 }
@@ -542,13 +611,20 @@ class TargetManager {
         }
         return false;
     }
+    
+    // Add method to update monsters remaining display
+    updateMonstersRemaining() {
+        const remaining = this.waveSize - this.monstersKilledInWave;
+        this.monstersRemainingElement.textContent = `Monsters: ${remaining}/${this.waveSize}`;
+    }
 }
 
 class Monster {
-    constructor(scene, camera) {
+    constructor(scene, camera, spriteFile = 'assets/monster_sprite.png') {
         this.scene = scene;
         this.camera = camera;
         this.sprite = null;
+        this.spriteFile = spriteFile;
         this.init();
     }
 
@@ -560,7 +636,7 @@ class Monster {
 
         // Load the monster image as a texture
         const loader = new THREE.TextureLoader();
-        loader.load('assets/monster_sprite.png', (texture) => {
+        loader.load(this.spriteFile, (texture) => {
             const material = new THREE.SpriteMaterial({
                 map: texture,
                 color: 0xffffff,
