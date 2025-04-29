@@ -454,31 +454,58 @@ class TargetManager {
     victory() {
         this.gameActive = false;
         
+        // Release pointer lock when game is won
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+        
+        // Play victory sound if available
+        if (window.audioManager) {
+            window.audioManager.playSound('victory');
+        }
+        
         const victoryScreen = document.createElement('div');
         victoryScreen.style.position = 'fixed';
         victoryScreen.style.top = '50%';
         victoryScreen.style.left = '50%';
         victoryScreen.style.transform = 'translate(-50%, -50%)';
-        victoryScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        victoryScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
         victoryScreen.style.color = 'gold';
-        victoryScreen.style.padding = '20px';
-        victoryScreen.style.borderRadius = '10px';
+        victoryScreen.style.padding = '30px';
+        victoryScreen.style.borderRadius = '20px';
         victoryScreen.style.textAlign = 'center';
-        victoryScreen.style.width = '400px';
+        victoryScreen.style.width = '500px';
+        victoryScreen.style.boxShadow = '0 0 30px 5px rgba(255, 215, 0, 0.5)';
+        victoryScreen.style.border = '3px solid gold';
         victoryScreen.innerHTML = `
-            <h1 style="font-size: 36px; margin-bottom: 20px;">VICTORY!</h1>
-            <p style="font-size: 24px; margin-bottom: 10px;">You have completed all ${this.totalWaves} waves!</p>
-            <p style="font-size: 24px; margin-bottom: 20px;">Final Score: ${this.score}</p>
-            <div style="background-color: #ff6b00; color: white; padding: 10px; margin: 15px 0; border-radius: 5px;">
-                <p style="font-size: 22px; margin: 0;">COMING SOON</p>
-                <p style="font-size: 18px; margin: 5px 0;">Next level being designed by Oliver!</p>
+            <h1 style="font-size: 48px; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);">VICTORY!</h1>
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <div style="height: 4px; width: 80%; background: linear-gradient(90deg, transparent, gold, transparent);"></div>
             </div>
-            <button onclick="location.reload()" style="padding: 15px 30px; font-size: 20px; background-color: gold; color: black; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+            <p style="font-size: 26px; margin-bottom: 10px;">You have completed all ${this.totalWaves} waves!</p>
+            <p style="font-size: 28px; margin-bottom: 30px; font-weight: bold;">Final Score: <span style="color: #00f0ff; text-shadow: 0 0 5px #00f0ff;">${this.score}</span></p>
+            <div style="background: linear-gradient(135deg, #ff6b00, #ff3300); color: white; padding: 15px; margin: 20px 0; border-radius: 10px; box-shadow: 0 5px 15px rgba(255, 107, 0, 0.4);">
+                <p style="font-size: 24px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">COMING SOON</p>
+                <p style="font-size: 20px; margin: 10px 0;">Next level being designed by Oliver!</p>
+            </div>
+            <button onclick="location.reload()" style="padding: 18px 36px; font-size: 22px; background: linear-gradient(to bottom, #ffd700, #b8860b); color: #000; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease;">
                 Play Again
             </button>
         `;
         document.body.appendChild(victoryScreen);
         
+        // Add hover effect to button
+        const button = victoryScreen.querySelector('button');
+        button.addEventListener('mouseover', () => {
+            button.style.transform = 'scale(1.05)';
+            button.style.boxShadow = '0 7px 20px rgba(0,0,0,0.4)';
+        });
+        button.addEventListener('mouseout', () => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+        });
+        
+        // Hide all targets and stop spawning
         this.targets.forEach(target => target.hide());
         this.stopSpawning();
     }
