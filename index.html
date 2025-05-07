@@ -256,9 +256,65 @@
                 margin: 2vw 0;
             }
         }
+
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, #0a0e1a 80%, #000 100%);
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Montserrat', Impact, Arial Black, sans-serif;
+        }
+        .loading-content {
+            text-align: center;
+            color: #4ecbff;
+        }
+        .loading-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 0 4px 24px #003366, 0 2px 8px #00f0ff;
+            margin-bottom: 2rem;
+        }
+        .loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        .loading-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4ecbff, #00f0ff);
+            transition: width 0.3s ease-out;
+        }
+        .loading-text {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-title">Loading Game Assets</div>
+            <div class="loading-progress">
+                <div class="loading-bar" id="loading-bar"></div>
+            </div>
+            <div class="loading-text" id="loading-text">Loading audio files...</div>
+        </div>
+    </div>
+
     <!-- Fortnite-style UI -->
     <div class="game-ui">
         <div class="ui-panel">

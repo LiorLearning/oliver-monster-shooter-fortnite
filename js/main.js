@@ -8,6 +8,33 @@ let audioManager;
 
 // Initialize the game
 function init() {
+    // Show loading screen
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingText = document.getElementById('loading-text');
+
+    // Initialize audio manager with loading callbacks
+    audioManager = new AudioManager();
+    audioManager.setLoadProgressCallback((progress, text) => {
+        loadingBar.style.width = `${progress}%`;
+        loadingText.textContent = text;
+    });
+    audioManager.setLoadCompleteCallback(() => {
+        // Hide loading screen with fade out
+        loadingScreen.style.transition = 'opacity 0.5s ease-out';
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+            // Start the game
+            startGame();
+        }, 500);
+    });
+
+    window.audioManager = audioManager;
+}
+
+// Start the game after loading is complete
+function startGame() {
     // Initialize Three.js scene
     scene = new THREE.Scene();
     const loader = new THREE.TextureLoader();
@@ -38,10 +65,6 @@ function init() {
     
     // Create environment
     environment = new Environment(scene);
-    
-    // Initialize audio manager and expose it globally
-    audioManager = new AudioManager();
-    window.audioManager = audioManager;
     
     // Create player controller
     player = new Player(camera, environment.colliders);
@@ -275,6 +298,9 @@ function togglePause() {
 
 // --- INTRO SCREEN LOGIC ---
 window.addEventListener('load', () => {
+    // Initialize the game first
+    init();
+
     // Render the intro screen
     const intro = document.getElementById('intro-screen');
     intro.innerHTML = `
@@ -312,8 +338,6 @@ window.addEventListener('load', () => {
             document.querySelector('.game-ui').style.display = '';
             document.getElementById('shotgun').style.display = '';
             document.getElementById('crosshair').style.display = '';
-            // Start the game
-            init();
             // Start background music after user interaction
             document.addEventListener('click', () => {
                 if (window.audioManager) {

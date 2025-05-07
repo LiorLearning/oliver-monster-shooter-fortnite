@@ -5,6 +5,10 @@ class AudioManager {
         this.bgm = null;
         this.bgmGain = null;
         this.isBGMPlaying = false;
+        this.totalSounds = 6; // Total number of sounds to load
+        this.loadedSounds = 0;
+        this.onLoadProgress = null;
+        this.onLoadComplete = null;
         
         // Load all sound effects
         this.loadSound('shotgun', 'assets/shotgun.mp3');
@@ -21,11 +25,35 @@ class AudioManager {
             .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
             .then(audioBuffer => {
                 this.sounds[name] = audioBuffer;
+                this.loadedSounds++;
+                
+                // Update loading progress
+                if (this.onLoadProgress) {
+                    const progress = (this.loadedSounds / this.totalSounds) * 100;
+                    this.onLoadProgress(progress, `Loading ${name}...`);
+                }
+
                 if (name === 'bgm') {
                     this.setupBGM();
                 }
+
+                // Check if all sounds are loaded
+                if (this.loadedSounds === this.totalSounds && this.onLoadComplete) {
+                    this.onLoadComplete();
+                }
             })
-            .catch(error => console.error('Error loading sound:', error));
+            .catch(error => {
+                console.error('Error loading sound:', error);
+                // Still increment loaded sounds to prevent hanging
+                this.loadedSounds++;
+                if (this.onLoadProgress) {
+                    const progress = (this.loadedSounds / this.totalSounds) * 100;
+                    this.onLoadProgress(progress, `Error loading ${name}, continuing...`);
+                }
+                if (this.loadedSounds === this.totalSounds && this.onLoadComplete) {
+                    this.onLoadComplete();
+                }
+            });
     }
 
     setupBGM() {
@@ -35,7 +63,10 @@ class AudioManager {
     }
 
     playSound(name) {
-        if (!this.sounds[name]) return;
+        if (!this.sounds[name]) {
+            console.warn(`Sound ${name} not loaded yet`);
+            return;
+        }
 
         // Always resume audio context before playing
         this.resumeAudioContext();
@@ -74,5 +105,15 @@ class AudioManager {
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
+    }
+
+    // Set callback for loading progress
+    setLoadProgressCallback(callback) {
+        this.onLoadProgress = callback;
+    }
+
+    // Set callback for loading completion
+    setLoadCompleteCallback(callback) {
+        this.onLoadComplete = callback;
     }
 } 
