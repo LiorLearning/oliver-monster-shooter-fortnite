@@ -4,7 +4,7 @@ class Environment {
     constructor(scene) {
         this.scene = scene;
         this.houseSize = 40;
-        this.wallHeight = 5;
+        this.wallHeight = 10;
         this.doorWidth = 2;
         this.doorHeight = 3;
         this.windowSize = 1.5;
@@ -129,24 +129,37 @@ class Environment {
     }
     
     createFloorAndCeiling() {
-        // Create floor with Fortnite-style material
+        // Load beach sand texture
+        const sandTexture = new THREE.TextureLoader().load('assets/beach-sand.png');
+        sandTexture.wrapS = THREE.RepeatWrapping;
+        sandTexture.wrapT = THREE.RepeatWrapping;
+        sandTexture.repeat.set(8, 8); // Tile the sand texture for a large area
+
+        // Create floor with beach sand material
         const floorGeometry = new THREE.PlaneGeometry(this.houseSize, this.houseSize);
         const floorMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x0a0a0a, // Much darker floor color
-            map: this.woodTexture,
-            roughness: 0.95, // Increased roughness to reduce reflectivity
-            metalness: 0.05, // Reduced metalness
-            envMapIntensity: 0.2 // Reduced environment map intensity
+            color: 0xffffff, // Let the sand texture show its color
+            map: sandTexture,
+            roughness: 0.95,
+            metalness: 0.05,
+            envMapIntensity: 0.2
         });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        // Create ceiling with Fortnite-style material
+        // Load ceiling texture (no tiling, use only once)
+        const ceilingTexture = new THREE.TextureLoader().load('assets/ceiling.png');
+        ceilingTexture.wrapS = THREE.ClampToEdgeWrapping;
+        ceilingTexture.wrapT = THREE.ClampToEdgeWrapping;
+        ceilingTexture.repeat.set(1, 1); // Use only once
+
+        // Create ceiling with ceiling texture
         const ceilingGeometry = new THREE.PlaneGeometry(this.houseSize, this.houseSize);
         const ceilingMaterial = new THREE.MeshStandardMaterial({ 
-            color: this.ceilingColor,
+            color: 0xffffff,
+            map: ceilingTexture,
             roughness: 0.8,
             metalness: 0.1,
             envMapIntensity: 0.3
@@ -158,11 +171,17 @@ class Environment {
         this.scene.add(ceiling);
     }
     
-    createWall(width, height, posX, posZ, rotY) {
+    createWall(width, height, posX, posZ, rotY, bright = false) {
+        // Load texture.png as wall texture
+        const wallTexture = new THREE.TextureLoader().load('assets/wall-texture.png');
+        wallTexture.wrapS = THREE.ClampToEdgeWrapping;
+        wallTexture.wrapT = THREE.ClampToEdgeWrapping;
+        wallTexture.repeat.set(1, 1); // Use only once, no tiling
+
         const wallGeometry = new THREE.PlaneGeometry(width, height);
         const wallMaterial = new THREE.MeshStandardMaterial({
-            color: this.wallColor,
-            map: this.wallTexture,
+            color: bright ? 0xffffff : this.wallColor,
+            map: wallTexture,
             roughness: 0.8,
             metalness: 0.1,
             envMapIntensity: 0.3
@@ -297,13 +316,14 @@ class Environment {
         );
         doorFrame.material = new THREE.MeshStandardMaterial({ color: this.doorColor });
 
-        // Create east wall (with multiple windows)
+        // Create east wall (with multiple windows) - BRIGHT
         const eastWall = this.createWall(
             this.houseSize, 
             this.wallHeight, 
             this.houseSize / 2, 
             0, 
-            Math.PI / 2
+            Math.PI / 2,
+            true // bright
         );
         
         this.createWindow(this.houseSize / 2, 5, Math.PI / 2);
@@ -323,251 +343,59 @@ class Environment {
         this.createWindow(-4, this.houseSize / 2, 0);
         this.createWindow(-8, this.houseSize / 2, 0);
 
-        // Create west wall (with multiple windows)
+        // Create west wall (with multiple windows) - BRIGHT
         const westWall = this.createWall(
             this.houseSize, 
             this.wallHeight, 
             -this.houseSize / 2, 
             0, 
-            Math.PI / 2
+            Math.PI / 2,
+            true // bright
         );
         
         this.createWindow(-this.houseSize / 2, 5, Math.PI / 2);
         this.createWindow(-this.houseSize / 2, -5, Math.PI / 2);
     }
     
-    createTable(posX = -2, posZ = -2, rotation = 0) {
-        const group = new THREE.Group();
-        
-        const tableTop = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 0.1, 1),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        tableTop.position.set(0, 0.8, 0);
-        tableTop.castShadow = true;
-        tableTop.receiveShadow = true;
-        group.add(tableTop);
-        
-        // Table legs
-        const legGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
-        const legMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8B4513,
-            roughness: 0.9
-        });
-        
-        const positions = [
-            [-0.7, 0.4, -0.4],
-            [0.7, 0.4, -0.4],
-            [-0.7, 0.4, 0.4],
-            [0.7, 0.4, 0.4]
-        ];
-        
-        positions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeometry, legMaterial);
-            leg.position.set(pos[0], pos[1], pos[2]);
-            leg.castShadow = true;
-            group.add(leg);
-        });
-        
-        // Set position and rotation
-        group.position.set(posX, 0, posZ);
-        group.rotation.y = rotation;
-        this.scene.add(group);
-    }
-    
-    createChair(x, z, rotation) {
-        const group = new THREE.Group();
-        
-        // Chair seat
-        const seat = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.1, 0.6),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        seat.position.y = 0.5;
-        seat.castShadow = true;
-        seat.receiveShadow = true;
-        group.add(seat);
-        
-        // Chair back
-        const back = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.8, 0.1),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        back.position.set(0, 0.9, -0.25);
-        back.castShadow = true;
-        back.receiveShadow = true;
-        group.add(back);
-        
-        // Chair legs
-        const legGeometry = new THREE.BoxGeometry(0.08, 0.5, 0.08);
-        const legMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8B4513,
-            roughness: 0.9
-        });
-        
-        const positions = [
-            [-0.25, 0.25, -0.25],
-            [0.25, 0.25, -0.25],
-            [-0.25, 0.25, 0.25],
-            [0.25, 0.25, 0.25]
-        ];
-        
-        positions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeometry, legMaterial);
-            leg.position.set(pos[0], pos[1], pos[2]);
-            leg.castShadow = true;
-            group.add(leg);
-        });
-        
-        group.position.set(x, 0, z);
-        group.rotation.y = rotation;
-        this.scene.add(group);
-    }
-    
-    createBookshelf(posX = 3, posZ = 3, rotation = -Math.PI / 4) {
-        const group = new THREE.Group();
-        
-        // Bookshelf frame
-        const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 2, 0.4),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x5C4033,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        frame.castShadow = true;
-        frame.receiveShadow = true;
-        group.add(frame);
-        
-        // Shelves
-        for (let i = 0; i < 4; i++) {
-            const shelf = new THREE.Mesh(
-                new THREE.BoxGeometry(1.5, 0.05, 0.4),
-                new THREE.MeshStandardMaterial({ 
-                    color: 0x6B4226,
-                    map: this.woodTexture,
-                    roughness: 0.7
-                })
-            );
-            shelf.position.y = -0.9 + i * 0.6;
-            shelf.castShadow = true;
-            shelf.receiveShadow = true;
-            group.add(shelf);
+    createFurniture() {
+        // Place fewer rocks and store their bounding boxes for collision
+        this.rockColliders = [];
+        const rockCount = 10;
+        for (let i = 0; i < rockCount; i++) {
+            const x = (Math.random() - 0.5) * (this.houseSize - 4);
+            const z = (Math.random() - 0.5) * (this.houseSize - 4);
+            // Skip center area to keep it clear
+            if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
+            this.createRock(x, z);
         }
-        
-        // Add some books
-        const bookColors = [
-            0x8B0000, 0x006400, 0x00008B, 
-            0x8B008B, 0x8B8B00, 0x008B8B
-        ];
-        
-        for (let shelf = 0; shelf < 4; shelf++) {
-            let offsetX = -0.6;
-            const y = -0.7 + shelf * 0.6;
-            
-            for (let book = 0; book < 4; book++) {
-                if (Math.random() > 0.7) continue; // Some spaces for realism
-                
-                const width = Math.random() * 0.1 + 0.1;
-                const height = Math.random() * 0.2 + 0.3;
-                
-                const bookGeometry = new THREE.BoxGeometry(width, height, 0.25);
-                const bookMaterial = new THREE.MeshStandardMaterial({ 
-                    color: bookColors[Math.floor(Math.random() * bookColors.length)],
-                    roughness: 0.9
-                });
-                
-                const bookMesh = new THREE.Mesh(bookGeometry, bookMaterial);
-                bookMesh.position.set(offsetX, y + height / 2, 0);
-                bookMesh.castShadow = true;
-                bookMesh.receiveShadow = true;
-                group.add(bookMesh);
-                
-                offsetX += width + 0.02;
-            }
-        }
-        
-        group.position.set(posX, 1, posZ);
-        group.rotation.y = rotation;
-        this.scene.add(group);
+    }
+
+    createRock(x, z) {
+        // Create a simple rock mesh (irregular sphere)
+        const radius = Math.random() * 0.6 + 0.4;
+        const geometry = new THREE.IcosahedronGeometry(radius, 1);
+        geometry.scale(1, Math.random() * 0.7 + 0.7, 1);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.95,
+            metalness: 0.15
+        });
+        const rock = new THREE.Mesh(geometry, material);
+        rock.position.set(x, radius * 0.7, z);
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        this.scene.add(rock);
+        // Add bounding box for collision
+        const minX = x - radius;
+        const maxX = x + radius;
+        const minZ = z - radius;
+        const maxZ = z + radius;
+        this.rockColliders.push({ minX, maxX, minZ, maxZ });
     }
     
-    createBrokenChair(posX = 1, posZ = -3, rotation = Math.PI / 4) {
-        const group = new THREE.Group();
-        
-        // Broken chair seat (tilted)
-        const seat = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.1, 0.6),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        seat.position.set(0, 0.3, 0);
-        seat.rotation.z = Math.PI / 6;
-        seat.castShadow = true;
-        seat.receiveShadow = true;
-        group.add(seat);
-        
-        // Broken chair back (detached)
-        const back = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.8, 0.1),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                map: this.woodTexture,
-                roughness: 0.8
-            })
-        );
-        back.position.set(0.3, 0.2, -0.5);
-        back.rotation.x = Math.PI / 2.5;
-        back.castShadow = true;
-        back.receiveShadow = true;
-        group.add(back);
-        
-        // Chair legs (only three, one broken)
-        const legGeometry = new THREE.BoxGeometry(0.08, 0.5, 0.08);
-        const legMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8B4513,
-            roughness: 0.9
-        });
-        
-        const positions = [
-            [-0.25, 0.25, -0.25],
-            [0.25, 0.25, -0.25],
-            [-0.25, 0.25, 0.25]
-        ];
-        
-        positions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeometry, legMaterial);
-            leg.position.set(pos[0], pos[1], pos[2]);
-            leg.castShadow = true;
-            group.add(leg);
-        });
-        
-        // Broken leg on the ground
-        const brokenLeg = new THREE.Mesh(legGeometry, legMaterial);
-        brokenLeg.position.set(0.4, 0.04, 0.3);
-        brokenLeg.rotation.z = Math.PI / 2;
-        brokenLeg.castShadow = true;
-        group.add(brokenLeg);
-        
-        group.position.set(posX, 0, posZ);
-        group.rotation.y = rotation;
-        this.scene.add(group);
+    createDecorations() {
+        // Only create dust particles, no cobwebs or debris
+        this.dust = this.createDust();
     }
     
     createDust() {
@@ -614,193 +442,6 @@ class Environment {
         this.scene.add(particles);
         
         return particles;
-    }
-    
-    createCobweb(x, y, z) {
-        const group = new THREE.Group();
-        
-        // Create a cobweb using thin lines
-        const webGeometry = new THREE.BufferGeometry();
-        const webMaterial = new THREE.LineBasicMaterial({ 
-            color: 0xCCCCCC,
-            transparent: true,
-            opacity: 0.5
-        });
-        
-        const points = [];
-        const center = new THREE.Vector3(0, 0, 0);
-        const radius = 0.5;
-        const strands = 12;
-        
-        // Create radial strands
-        for (let i = 0; i < strands; i++) {
-            const angle = (i / strands) * Math.PI * 2;
-            const endpoint = new THREE.Vector3(
-                Math.cos(angle) * radius,
-                Math.sin(angle) * radius * 0.5, // Slightly oval
-                0
-            );
-            
-            points.push(center.clone());
-            points.push(endpoint.clone());
-            
-            // Create connecting threads between strands
-            if (i > 0) {
-                const prevAngle = ((i - 1) / strands) * Math.PI * 2;
-                const prevPoint = new THREE.Vector3(
-                    Math.cos(prevAngle) * radius,
-                    Math.sin(prevAngle) * radius * 0.5,
-                    0
-                );
-                
-                // Add some spiral threads
-                for (let r = 0.2; r < radius; r += 0.15) {
-                    const p1 = new THREE.Vector3(
-                        Math.cos(prevAngle) * r,
-                        Math.sin(prevAngle) * r * 0.5,
-                        0
-                    );
-                    
-                    const p2 = new THREE.Vector3(
-                        Math.cos(angle) * r,
-                        Math.sin(angle) * r * 0.5,
-                        0
-                    );
-                    
-                    points.push(p1.clone());
-                    points.push(p2.clone());
-                }
-            }
-        }
-        
-        webGeometry.setFromPoints(points);
-        const web = new THREE.LineSegments(webGeometry, webMaterial);
-        group.add(web);
-        
-        group.position.set(x, y, z);
-        this.scene.add(group);
-    }
-    
-    createFurniture() {
-        // Calculate grid positions for even distribution
-        const gridSize = 8; // 8x8 grid
-        const spacing = this.houseSize / gridSize;
-        const startPos = -this.houseSize / 2 + spacing / 2;
-
-        // Create furniture in a grid pattern
-        for (let x = 0; x < gridSize; x++) {
-            for (let z = 0; z < gridSize; z++) {
-                const posX = startPos + x * spacing;
-                const posZ = startPos + z * spacing;
-                
-                // Skip center area to keep it clear
-                if (Math.abs(posX) < spacing * 2 && Math.abs(posZ) < spacing * 2) continue;
-
-                // Randomly choose furniture type
-                const choice = Math.random();
-                
-                if (choice < 0.3) {
-                    // Broken chair
-                    this.createBrokenChair(
-                        posX + (Math.random() - 0.5) * spacing * 0.5,
-                        posZ + (Math.random() - 0.5) * spacing * 0.5,
-                        Math.random() * Math.PI * 2
-                    );
-                } else if (choice < 0.6) {
-                    // Table with broken chairs
-                    this.createTable(
-                        posX + (Math.random() - 0.5) * spacing * 0.5,
-                        posZ + (Math.random() - 0.5) * spacing * 0.5,
-                        Math.random() * Math.PI * 2
-                    );
-                    // Add 1-2 broken chairs around the table
-                    const numChairs = Math.floor(Math.random() * 2) + 1;
-                    for (let i = 0; i < numChairs; i++) {
-                        const angle = (i / numChairs) * Math.PI * 2;
-                        this.createBrokenChair(
-                            posX + Math.cos(angle) * 1.5,
-                            posZ + Math.sin(angle) * 1.5,
-                            angle + Math.PI / 2
-                        );
-                    }
-                } else if (choice < 0.8) {
-                    // Bookshelf (sometimes broken)
-                    this.createBookshelf(
-                        posX + (Math.random() - 0.5) * spacing * 0.5,
-                        posZ + (Math.random() - 0.5) * spacing * 0.5,
-                        Math.random() * Math.PI * 2
-                    );
-                }
-            }
-        }
-    }
-    
-    createDecorations() {
-        // Create dust particles
-        this.dust = this.createDust();
-        
-        // Add cobwebs throughout the space
-        const webSpacing = this.houseSize / 6;
-        const startPos = -this.houseSize / 2 + webSpacing / 2;
-        
-        for (let x = 0; x < 6; x++) {
-            for (let z = 0; z < 6; z++) {
-                const posX = startPos + x * webSpacing;
-                const posZ = startPos + z * webSpacing;
-                
-                // Skip center area
-                if (Math.abs(posX) < webSpacing && Math.abs(posZ) < webSpacing) continue;
-                
-                // Add cobweb with random height
-                const height = 2.5 + Math.random() * 2;
-                this.createCobweb(posX, height, posZ);
-            }
-        }
-
-        // Add broken glass and debris
-        const debrisCount = 20;
-        for (let i = 0; i < debrisCount; i++) {
-            const posX = (Math.random() - 0.5) * (this.houseSize - 4);
-            const posZ = (Math.random() - 0.5) * (this.houseSize - 4);
-            
-            // Skip center area
-            if (Math.abs(posX) < 4 && Math.abs(posZ) < 4) continue;
-            
-            this.createDebris(posX, 0, posZ);
-        }
-    }
-    
-    createDebris(x, y, z) {
-        const group = new THREE.Group();
-        
-        // Create random pieces of debris
-        const pieceCount = Math.floor(Math.random() * 5) + 3;
-        for (let i = 0; i < pieceCount; i++) {
-            const size = Math.random() * 0.3 + 0.1;
-            const geometry = new THREE.BoxGeometry(size, size * 0.2, size);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x888888,
-                roughness: 0.9,
-                metalness: 0.1
-            });
-            
-            const piece = new THREE.Mesh(geometry, material);
-            piece.position.set(
-                (Math.random() - 0.5) * 0.5,
-                size * 0.1,
-                (Math.random() - 0.5) * 0.5
-            );
-            piece.rotation.set(
-                Math.random() * Math.PI,
-                Math.random() * Math.PI,
-                Math.random() * Math.PI
-            );
-            piece.castShadow = true;
-            group.add(piece);
-        }
-        
-        group.position.set(x, y, z);
-        this.scene.add(group);
     }
     
     createColliders() {
@@ -910,8 +551,11 @@ class Environment {
             }
         ];
 
+        // Add rock colliders
+        const rockColliders = this.rockColliders || [];
+
         // Combine colliders
-        return [...wallColliders, ...furnitureColliders];
+        return [...wallColliders, ...furnitureColliders, ...rockColliders];
     }
     
     updateDust() {

@@ -12,6 +12,7 @@ class AudioManager {
         this.loadSound('health', 'assets/health.mp3');
         this.loadSound('answer', 'assets/answer.mp3');
         this.loadSound('bgm', 'assets/bgm.mp3');
+        this.loadSound('slice', 'assets/slice.mp3');
     }
 
     loadSound(name, url) {
@@ -36,28 +37,34 @@ class AudioManager {
     playSound(name) {
         if (!this.sounds[name]) return;
 
-        const source = this.audioContext.createBufferSource();
-        source.buffer = this.sounds[name];
-        
+        // Always resume audio context before playing
+        this.resumeAudioContext();
+
         if (name === 'bgm') {
             if (this.isBGMPlaying) return;
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.sounds[name];
             source.loop = true;
             source.connect(this.bgmGain);
             this.isBGMPlaying = true;
+            this.bgm = source;
+            source.start(0);
         } else {
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.sounds[name];
             // Create gain node for sound effects and set volume to 30%
             const gainNode = this.audioContext.createGain();
             gainNode.gain.value = 0.1;
             source.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
+            source.start(0);
         }
-        
-        source.start(0);
     }
 
     stopBGM() {
         if (this.bgm) {
             this.bgm.stop();
+            this.bgm = null;
             this.isBGMPlaying = false;
         }
     }

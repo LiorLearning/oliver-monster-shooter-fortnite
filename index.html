@@ -112,13 +112,14 @@
         #shotgun {
             position: fixed;
             left: 50%;
-            bottom: 0;
-            transform: translateX(-50%);
-            width: 420px;
-            max-width: 90vw;
+            bottom: -250px;
+            transform: translateX(-30%) scale(0.75);
+            z-index: 100;
             pointer-events: none;
-            z-index: 99;
-            user-select: none;
+            transition: transform 0.3s cubic-bezier(0.4,1.6,0.4,1), bottom 0.3s cubic-bezier(0.4,1.6,0.4,1);
+        }
+        #shotgun[src*="no-ammo"] {
+            transform: translateX(-30%) scale(0.3); /* Larger scale for no-ammo image */
         }
         @keyframes shotgun-recoil {
             0% { transform: translateX(-50%) translateY(0) scale(1) rotate(-2deg); }

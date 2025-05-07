@@ -49,9 +49,9 @@ class AmmoBox {
     }
 
     init() {
-        // Load the ammo box image as a sprite
+        // Load the knife image as a sprite (instead of ammo_box.png)
         const loader = new THREE.TextureLoader();
-        loader.load('assets/ammo_box.png', (texture) => {
+        loader.load('assets/knife.png', (texture) => {
             // Main sprite
             const material = new THREE.SpriteMaterial({
                 map: texture,
@@ -369,16 +369,24 @@ class Player {
             this.ammoElement.classList.add('changed');
             setTimeout(() => this.ammoElement.classList.remove('changed'), 300);
         }
+        
+        // Update shotgun image based on ammo
+        const shotgun = document.getElementById('shotgun');
+        if (shotgun) {
+            if (this.currentAmmo <= 0) {
+                shotgun.src = 'assets/no-ammo.png';
+            } else {
+                shotgun.src = 'assets/shotgun_first_person.png';
+            }
+        }
     }
 
     spawnAmmoBox(scene) {
-        // Find a random position in the room
-        const houseSize = 20; // Assuming house size is 20 units
+        // Use the actual environment size for spawning
+        const houseSize = window.environment ? window.environment.houseSize : 20;
         const x = (Math.random() - 0.5) * (houseSize - 2);
         const z = (Math.random() - 0.5) * (houseSize - 2);
-        const position = new THREE.Vector3(x, 1, z);
-        
-        // Create ammo box
+        const position = new THREE.Vector3(x, 1.2, z); // y = 1.2 for visibility above floor
         this.ammoBox = new AmmoBox(scene, position);
     }
 

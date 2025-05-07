@@ -10,8 +10,13 @@ let audioManager;
 function init() {
     // Initialize Three.js scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    scene.fog = new THREE.Fog(0xcce6ff, 5, 30); // Soft blue fog with reduced density
+    const loader = new THREE.TextureLoader();
+    loader.load('assets/background.jpg', function(texture) {
+        scene.background = texture;
+    });
+    loader.load('assets/beach_rain.jpg', function(texture) {
+        scene.background = texture;
+    });
 
     // Create camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -56,19 +61,84 @@ function init() {
     // Add shooting event listener
     document.addEventListener('keydown', (event) => {
         if (event.key.toLowerCase() === 'e') {
-            player.shoot(scene, targetManager);
-            // Play shotgun sound
-            audioManager.playSound('shotgun');
-            // Trigger shotgun recoil
+            // Play slice sound
+            if (window.audioManager) {
+                window.audioManager.playSound('slice');
+            }
+            // Hide shotgun image
             const shotgun = document.getElementById('shotgun');
             if (shotgun) {
-                shotgun.classList.remove('recoil'); // Reset if already animating
-                // Force reflow to restart animation
-                void shotgun.offsetWidth;
-                shotgun.classList.add('recoil');
-                // Remove class after animation
-                setTimeout(() => shotgun.classList.remove('recoil'), 180);
+                shotgun.style.transition = 'transform 0.3s cubic-bezier(0.4,1.6,0.4,1)';
+                shotgun.style.transform = 'translate(-50%, 40px)';
             }
+
+            // Deplete ammo (knife replaces ammo)
+            if (player.currentAmmo <= 0) return;
+            player.currentAmmo--;
+            player.updateAmmoUI();
+            if (player.currentAmmo === 0) {
+                player.spawnAmmoBox(scene);
+            }
+
+            // Create and animate knife
+            const knifeTexture = new THREE.TextureLoader().load('assets/knife.png');
+            const knifeMaterial = new THREE.SpriteMaterial({ map: knifeTexture, transparent: true });
+            const knifeSprite = new THREE.Sprite(knifeMaterial);
+            knifeSprite.scale.set(0.7, 0.18, 1); // Knife aspect ratio
+            // Start in front of camera
+            const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const camPos = camera.position.clone();
+            knifeSprite.position.copy(camPos).add(camDir.clone().multiplyScalar(0.7)).add(new THREE.Vector3(0, -0.2, 0));
+            scene.add(knifeSprite);
+
+            // Animate knife forward and check for collision
+            let t = 0;
+            const duration = 0.35; // seconds
+            const start = knifeSprite.position.clone();
+            const end = camPos.clone().add(camDir.clone().multiplyScalar(8));
+            let hitRegistered = false;
+            function animateKnife() {
+                t += 1/60;
+                if (t < duration) {
+                    knifeSprite.position.lerpVectors(start, end, t/duration);
+                    // Check for collision with monsters
+                    if (!hitRegistered) {
+                        const rayOrigin = start.clone();
+                        const rayDir = camDir.clone();
+                        const raycaster = new THREE.Raycaster(rayOrigin, rayDir, 0, 8);
+                        raycaster.camera = camera;
+                        // Check all active monsters
+                        for (const target of targetManager.targets) {
+                            if (target.active && target.sprite && target.sprite.parent) {
+                                target.sprite.updateMatrixWorld(true);
+                                const intersects = raycaster.intersectObject(target.sprite);
+                                if (intersects.length > 0) {
+                                    hitRegistered = true;
+                                    if (target.hit()) {
+                                        targetManager.score += 100;
+                                        targetManager.scoreElement.textContent = targetManager.score;
+                                        targetManager.monstersKilledInWave++;
+                                        targetManager.updateMonstersRemaining();
+                                        if (targetManager.waveNumber === 0) {
+                                            targetManager.dropStone(target.sprite.position);
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    requestAnimationFrame(animateKnife);
+                } else {
+                    scene.remove(knifeSprite);
+                    // Slide shotgun back in
+                    if (shotgun) {
+                        shotgun.style.transition = 'transform 0.4s cubic-bezier(0.4,1.6,0.4,1)';
+                        shotgun.style.transform = 'translateY(0)';
+                    }
+                }
+            }
+            animateKnife();
         }
     });
     
@@ -81,6 +151,9 @@ function init() {
             togglePause();
         }
     });
+    
+    // Add rain particle system
+    createRain();
     
     // Start animation loop
     animate();
@@ -167,6 +240,9 @@ function animate() {
     // Update monsters
     targetManager.updateTargets(camera.position);
     
+    // Update rain
+    updateRain();
+    
     // Render the scene
     renderer.render(scene, camera);
 }
@@ -203,10 +279,8 @@ window.addEventListener('load', () => {
     const intro = document.getElementById('intro-screen');
     intro.innerHTML = `
       <div class="intro-content">
-        <div class="intro-title">MONSTER<br>HUNTER</div>
-        <div class="intro-level">Level 1</div>
+        <div class="intro-title">Battle of the Knights ⚔️</div>
         <button class="intro-play-btn" id="intro-play-btn">PLAY</button>
-        <div class="intro-creator">Created by OLIVER</div>
       </div>
       <div class="intro-instructions-box">
         <div class="intro-instructions-title">Game Instructions</div>
@@ -219,6 +293,7 @@ window.addEventListener('load', () => {
           <li>Watch your Health and Score</li>
         </ul>
       </div>
+      <div class="intro-creator">Created by Hyrum West</div>
     `;
     intro.style.display = 'flex';
     // Hide all game UI and elements until play
@@ -511,3 +586,35 @@ window.showQuizPanel = function(callback) {
   renderQuestion();
   root.appendChild(panel);
 };
+
+// --- Rain Particle System ---
+let rainParticles = [];
+let rainGeometry, rainMaterial, rainMesh;
+
+function createRain() {
+    const rainCount = 1000;
+    rainGeometry = new THREE.BufferGeometry();
+    const positions = [];
+    for (let i = 0; i < rainCount; i++) {
+        positions.push(
+            (Math.random() - 0.5) * 40, // x
+            Math.random() * 20 + 5,      // y (start above player)
+            (Math.random() - 0.5) * 40  // z
+        );
+    }
+    rainGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    rainMaterial = new THREE.PointsMaterial({ color: 0xaaaaee, size: 0.08, transparent: true });
+    rainMesh = new THREE.Points(rainGeometry, rainMaterial);
+    scene.add(rainMesh);
+}
+
+function updateRain() {
+    const positions = rainGeometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] -= 0.25 + Math.random() * 0.1; // y
+        if (positions[i + 1] < 0) {
+            positions[i + 1] = Math.random() * 20 + 10; // reset to top
+        }
+    }
+    rainGeometry.attributes.position.needsUpdate = true;
+}

@@ -7,12 +7,23 @@ class MonsterTarget {
         this.active = false;
         
         // Determine wave number from sprite file for difficulty scaling
-        const waveMatch = spriteFile.match(/monster_sprite_(\d+)/);
-        const waveNumber = waveMatch ? parseInt(waveMatch[1]) : 0;
+        let waveNumber = 0;
+        if (spriteFile.includes('mega-monster')) {
+            waveNumber = 2;
+        } else {
+            const waveMatch = spriteFile.match(/monster_sprite_(\d+)/);
+            waveNumber = waveMatch ? parseInt(waveMatch[1]) : 0;
+        }
         
-        // Scale health and speed based on wave number
-        this.health = 100 + (waveNumber * 20); // Increase health for later waves
-        this.baseSpeed = 0.04 + (waveNumber * 0.005); // Slightly increase speed
+        // Set health based on monster type
+        if (spriteFile.includes('mega-monster')) {
+            this.health = 20; // 20 hits required for mega monster in wave 2
+            this.isMegaMonster = true;
+        } else {
+            this.health = 5; // 3 hits required for regular monsters
+            this.isMegaMonster = false;
+        }
+        this.baseSpeed = this.isMegaMonster ? 0.03 : 0.04;
         this.speed = this.baseSpeed;
         this.damageTimer = 0;
         
@@ -21,15 +32,15 @@ class MonsterTarget {
         this.strafeTime = 0;
         this.strafeDuration = 0;
         this.lastDodgeTime = 0;
-        this.dodgeCooldown = Math.max(800 - (waveNumber * 50), 500); // Reduce dodge cooldown (more frequent dodges)
+        this.dodgeCooldown = this.isMegaMonster ? 1000 : 800; // Longer cooldown for mega monster
         this.movementState = 'pursue';
         this.dodgeDirection = new THREE.Vector3();
-        this.aggressionLevel = 0.3 + Math.random() * 0.3 + (waveNumber * 0.1); // Increase aggression
+        this.aggressionLevel = this.isMegaMonster ? 0.8 : 0.3; // Higher aggression for mega monster
         
         // Animation variables
         this.breathTime = 0;
         this.breathSpeed = 0.02;
-        this.breathAmplitude = 0.05;
+        this.breathAmplitude = this.isMegaMonster ? 0.1 : 0.05; // Larger breathing for mega monster
         
         // Load the monster image as a sprite
         const loader = new THREE.TextureLoader();
@@ -45,16 +56,20 @@ class MonsterTarget {
                 transparent: true,
                 depthTest: true,
                 depthWrite: true,
-                alphaTest: 0.5 // Important for hit detection
+                alphaTest: 0.5
             });
             
             this.sprite = new THREE.Sprite(material);
-            this.sprite.scale.set(2.5, 2.5, 1);
+            // Scale up mega monster
+            this.sprite.scale.set(
+                this.isMegaMonster ? 4 : 2.5,
+                this.isMegaMonster ? 4 : 2.5,
+                1
+            );
             this.sprite.position.copy(position);
             this.sprite.visible = false;
             this.sprite.frustumCulled = false;
             
-            // Set up the sprite for proper hit detection
             this.sprite.matrixAutoUpdate = true;
             this.sprite.updateMatrix();
             
@@ -106,8 +121,7 @@ class MonsterTarget {
     }
     
     hit() {
-        const damagePercent = 34; // Damage is now a percentage of total health
-        const damage = Math.ceil(this.initialHealth * (damagePercent / 100));
+        const damage = 1; // Each hit does 1 damage
         this.health -= damage;
         
         // Enhanced hit effect with glow
@@ -147,6 +161,25 @@ class MonsterTarget {
                 requestAnimationFrame(animateGlow);
             };
             animateGlow();
+            
+            // Show health remaining for mega monster
+            if (this.isMegaMonster) {
+                const healthMessage = document.createElement('div');
+                healthMessage.style.position = 'fixed';
+                healthMessage.style.top = '30%';
+                healthMessage.style.left = '50%';
+                healthMessage.style.transform = 'translate(-50%, -50%)';
+                healthMessage.style.color = 'red';
+                healthMessage.style.fontSize = '24px';
+                healthMessage.style.textAlign = 'center';
+                healthMessage.style.textShadow = '2px 2px 4px black';
+                healthMessage.textContent = `Mega Monster Health: ${this.health}/20`;
+                document.body.appendChild(healthMessage);
+                
+                setTimeout(() => {
+                    document.body.removeChild(healthMessage);
+                }, 1000);
+            }
         }
         
         if (this.health <= 0) {
@@ -252,12 +285,14 @@ class TargetManager {
         this.minSpawnDistance = 6;
         this.gameActive = true;
         this.waveSize = 5; // Fixed number of monsters per wave
-        this.totalWaves = 5; // Total number of waves to complete the game
+        this.totalWaves = 2; // Reduced to 2 waves
         this.monstersKilledInWave = 0;
         this.monstersSpawnedInWave = 0;
         this.waveCooldown = 5000; // 5 seconds between waves
         this.isWaveCooldown = false;
         this.waveNumber = 0;
+        this.stonesCollected = 0;
+        this.stonesRequired = 5; // Number of stones needed to progress
         
         // Create monsters remaining display
         this.monstersRemainingElement = document.createElement('div');
@@ -271,16 +306,25 @@ class TargetManager {
         document.body.appendChild(this.monstersRemainingElement);
         this.updateMonstersRemaining();
         
+        // Create stones display
+        this.stonesElement = document.createElement('div');
+        this.stonesElement.id = 'stones-display';
+        this.stonesElement.style.position = 'fixed';
+        this.stonesElement.style.top = '100px';
+        this.stonesElement.style.right = '20px';
+        this.stonesElement.style.color = 'white';
+        this.stonesElement.style.fontSize = '20px';
+        this.stonesElement.style.textShadow = '2px 2px 4px black';
+        document.body.appendChild(this.stonesElement);
+        this.updateStonesDisplay();
+        
         // Monster sprite files for each wave
         this.monsterSprites = [
-            'assets/monster_sprite.png',
-            'assets/monster_sprite_2.png',
-            'assets/monster_sprite_3.png',
-            'assets/monster_sprite_4.png',
-            'assets/monster_sprite_5.png'
+            'assets/minion.png',
+            'assets/mega-monster.png'
         ];
         
-        // Create potential spawn positions (we'll filter these based on player position)
+        // Create potential spawn positions
         this.spawnPositions = [
             new THREE.Vector3(-8, 1.5, -8),
             new THREE.Vector3(8, 1.5, -8),
@@ -289,20 +333,20 @@ class TargetManager {
             new THREE.Vector3(0, 1.5, -9),
             new THREE.Vector3(-9, 1.5, 0),
             new THREE.Vector3(9, 1.5, 0),
-            new THREE.Vector3(0, 1.5, 9),
-            // Add more spawn positions for variety
-            new THREE.Vector3(-7, 1.5, -7),
-            new THREE.Vector3(7, 1.5, -7),
-            new THREE.Vector3(-7, 1.5, 7),
-            new THREE.Vector3(7, 1.5, 7),
-            new THREE.Vector3(-5, 1.5, -9),
-            new THREE.Vector3(5, 1.5, -9),
-            new THREE.Vector3(-9, 1.5, -5),
-            new THREE.Vector3(-9, 1.5, 5)
+            new THREE.Vector3(0, 1.5, 9)
         ];
         
         // Create targets for each monster type
         this.createTargetsForAllWaves();
+
+        this.stoneImages = [
+            'assets/stone-1.png',
+            'assets/stone-2.png',
+            'assets/stone-3.png',
+            'assets/stone-4.png',
+            'assets/stone-5.png'
+        ];
+        this.stoneImagesShuffled = [];
     }
     
     createTargetsForAllWaves() {
@@ -321,6 +365,34 @@ class TargetManager {
     }
     
     startSpawning() {
+        // Clear any existing interval
+        if (this.spawnInterval) {
+            clearInterval(this.spawnInterval);
+        }
+        
+        // Reset wave state
+        this.monstersKilledInWave = 0;
+        this.monstersSpawnedInWave = 0;
+        this.isWaveCooldown = false;
+        this.waveSize = this.waveNumber === 1 ? 1 : 5;
+        this.updateMonstersRemaining();
+        
+        // Shuffle stone images at the start of wave 1
+        if (this.waveNumber === 0) {
+            this.stoneImagesShuffled = this.stoneImages.slice();
+            for (let i = this.stoneImagesShuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [this.stoneImagesShuffled[i], this.stoneImagesShuffled[j]] = [this.stoneImagesShuffled[j], this.stoneImagesShuffled[i]];
+            }
+        }
+        // When wave 2 starts, update the shotgun image to the sword
+        if (this.waveNumber === 1) {
+            const shotgunImg = document.getElementById('shotgun');
+            if (shotgunImg) {
+                shotgunImg.src = 'assets/wave-2-sword.png';
+            }
+        }
+        
         this.spawnInterval = setInterval(() => {
             if (!this.gameActive) return;
             
@@ -337,7 +409,7 @@ class TargetManager {
             }
             
             // Only spawn if we haven't reached the wave size limit
-            if (this.monstersSpawnedInWave < this.waveSize && Math.random() < 0.3) {
+            if (this.monstersSpawnedInWave < this.waveSize) {
                 // Get the current wave's sprite
                 const currentSprite = this.getCurrentWaveSprite();
                 const currentWaveIndex = Math.min(this.waveNumber, this.monsterSprites.length - 1);
@@ -367,6 +439,7 @@ class TargetManager {
                             availableTarget.sprite.position.copy(safePosition);
                             availableTarget.show();
                             this.monstersSpawnedInWave++;
+                            this.updateMonstersRemaining();
                         }
                     }
                 }
@@ -376,9 +449,44 @@ class TargetManager {
     
     startWaveCooldown() {
         this.isWaveCooldown = true;
+        
+        // Check if we need to wait for stones to be collected
+        if (this.waveNumber === 0 && this.stonesCollected < this.stonesRequired) {
+            const stoneMessage = document.createElement('div');
+            stoneMessage.style.position = 'fixed';
+            stoneMessage.style.top = '20%';
+            stoneMessage.style.left = '50%';
+            stoneMessage.style.transform = 'translate(-50%, -50%)';
+            stoneMessage.style.color = 'white';
+            stoneMessage.style.fontSize = '24px';
+            stoneMessage.style.textAlign = 'center';
+            stoneMessage.style.textShadow = '2px 2px 4px black';
+            stoneMessage.textContent = `Collect ${this.stonesRequired - this.stonesCollected} more stones to proceed!`;
+            document.body.appendChild(stoneMessage);
+            
+            setTimeout(() => {
+                document.body.removeChild(stoneMessage);
+                this.isWaveCooldown = false;
+            }, 3000);
+            return;
+        }
+        
+        // Stop current wave spawning
+        if (this.spawnInterval) {
+            clearInterval(this.spawnInterval);
+        }
+        
+        // Hide all current monsters
+        this.targets.forEach(target => target.hide());
+        
+        this.waveNumber++;
+        
+        // Set wave size based on wave number
+        this.waveSize = this.waveNumber === 1 ? 1 : 5;
+        
+        // Reset wave counters
         this.monstersKilledInWave = 0;
         this.monstersSpawnedInWave = 0;
-        this.waveNumber++;
         
         // Update monsters remaining display
         this.updateMonstersRemaining();
@@ -390,8 +498,8 @@ class TargetManager {
         }
         
         // Get the next wave's monster type name
-        const nextWaveType = this.waveNumber < this.monsterSprites.length - 1 ? 
-            `Monster Type ${this.waveNumber + 1}` : 
+        const nextWaveType = this.waveNumber === 1 ? 
+            "Mega Monster" : 
             "Final Boss Monster";
         
         // Show wave complete message
@@ -447,6 +555,8 @@ class TargetManager {
             
             setTimeout(() => {
                 document.body.removeChild(incomingWaveMessage);
+                // Start spawning for the new wave
+                this.startSpawning();
             }, 2000);
         }, this.waveCooldown);
     }
@@ -629,8 +739,13 @@ class TargetManager {
                     if (target.hit()) {
                         this.score += 100;
                         this.scoreElement.textContent = this.score;
-                        this.monstersKilledInWave++; // Increment killed monsters counter
-                        this.updateMonstersRemaining(); // Update display after killing a monster
+                        this.monstersKilledInWave++;
+                        this.updateMonstersRemaining();
+                        
+                        // Drop stone in first wave
+                        if (this.waveNumber === 0) {
+                            this.dropStone(target.sprite.position);
+                        }
                     }
                     return true;
                 }
@@ -639,10 +754,150 @@ class TargetManager {
         return false;
     }
     
+    dropStone(position) {
+        // Use a unique stone image for each drop in wave 1
+        let stoneImage = 'assets/stone-1.png';
+        if (this.waveNumber === 0 && this.stoneImagesShuffled.length > 0) {
+            stoneImage = this.stoneImagesShuffled.shift();
+        } else if (this.waveNumber === 0) {
+            // Fallback: if more than 5 stones are dropped, just use the first
+            stoneImage = this.stoneImages[0];
+        } else {
+            // For other waves, just pick randomly
+            const randomIndex = Math.floor(Math.random() * this.stoneImages.length);
+            stoneImage = this.stoneImages[randomIndex];
+        }
+        const stoneTexture = new THREE.TextureLoader().load(stoneImage);
+        const stoneMaterial = new THREE.SpriteMaterial({
+            map: stoneTexture,
+            color: 0xffffff,
+            transparent: true
+        });
+        const stone = new THREE.Sprite(stoneMaterial);
+        stone.position.copy(position);
+        stone.position.y = 0.4; // Slightly above ground
+        stone.scale.set(0.7, 0.7, 1); // Adjust as needed
+        stone.frustumCulled = false;
+        this.scene.add(stone);
+
+        // Add a glowing sprite for extra effect
+        const glowTexture = new THREE.TextureLoader().load('assets/glow.png');
+        const glowMaterial = new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: 0xffff66,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const glowSprite = new THREE.Sprite(glowMaterial);
+        glowSprite.scale.set(1.1, 1.1, 1);
+        glowSprite.position.set(0, 0, 0);
+        stone.add(glowSprite);
+
+        // Bounce effect animation
+        let bounceHeight = 1.2;
+        let bounceTime = 0;
+        const bounceDuration = 0.5; // seconds
+        const startY = stone.position.y;
+        const animateBounce = () => {
+            bounceTime += 1 / 60;
+            if (bounceTime < bounceDuration) {
+                // Parabolic bounce
+                const t = bounceTime / bounceDuration;
+                stone.position.y = startY + bounceHeight * 4 * t * (1 - t);
+                requestAnimationFrame(animateBounce);
+            } else {
+                stone.position.y = 0.4;
+            }
+        };
+        animateBounce();
+
+        // Add collision detection for stone collection
+        const checkStoneCollection = () => {
+            if (!stone.parent) return; // Stone was already collected
+            const distance = stone.position.distanceTo(window.playerPosition);
+            if (distance < 1.5) { // Collection radius
+                this.stonesCollected++;
+                this.updateStonesDisplay();
+                this.scene.remove(stone);
+                // Play answer sound when stone is collected
+                if (window.audioManager) {
+                    window.audioManager.playSound('answer');
+                }
+                return;
+            }
+            requestAnimationFrame(checkStoneCollection);
+        };
+        checkStoneCollection();
+    }
+    
     // Add method to update monsters remaining display
     updateMonstersRemaining() {
         const remaining = this.waveSize - this.monstersKilledInWave;
         this.monstersRemainingElement.textContent = `Monsters: ${remaining}/${this.waveSize}`;
+        // Check for wave 1 victory
+        if (
+            this.waveNumber === 0 &&
+            this.monstersKilledInWave >= this.waveSize &&
+            this.stonesCollected >= this.stonesRequired &&
+            !this._wave1VictoryShown
+        ) {
+            this._wave1VictoryShown = true;
+            this.victoryWave1();
+        }
+    }
+    
+    updateStonesDisplay() {
+        this.stonesElement.textContent = `Stones: ${this.stonesCollected}/${this.stonesRequired}`;
+        // Check for wave 1 victory
+        if (
+            this.waveNumber === 0 &&
+            this.monstersKilledInWave >= this.waveSize &&
+            this.stonesCollected >= this.stonesRequired &&
+            !this._wave1VictoryShown
+        ) {
+            this._wave1VictoryShown = true;
+            this.victoryWave1();
+        }
+    }
+
+    victoryWave1() {
+        this.gameActive = false;
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+        if (window.audioManager) {
+            window.audioManager.playSound('victory');
+        }
+        const victoryScreen = document.createElement('div');
+        victoryScreen.style.position = 'fixed';
+        victoryScreen.style.top = '50%';
+        victoryScreen.style.left = '50%';
+        victoryScreen.style.transform = 'translate(-50%, -50%)';
+        victoryScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+        victoryScreen.style.color = 'gold';
+        victoryScreen.style.padding = '30px';
+        victoryScreen.style.borderRadius = '20px';
+        victoryScreen.style.textAlign = 'center';
+        victoryScreen.style.width = '500px';
+        victoryScreen.style.boxShadow = '0 0 30px 5px rgba(255, 215, 0, 0.5)';
+        victoryScreen.style.border = '3px solid gold';
+        victoryScreen.innerHTML = `
+            <h1 style="font-size: 48px; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);">VICTORY!</h1>
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <div style="height: 4px; width: 80%; background: linear-gradient(90deg, transparent, gold, transparent);"></div>
+            </div>
+            <p style="font-size: 26px; margin-bottom: 10px; color: #fff;">all stones collected, come back in the next session for the final face-off</p>
+            <p style="font-size: 28px; margin-bottom: 30px; font-weight: bold;">Score: <span style="color: #00f0ff; text-shadow: 0 0 5px #00f0ff;">${this.score}</span></p>
+            <button onclick="location.reload()" style="padding: 18px 36px; font-size: 22px; background: linear-gradient(to bottom, #ffd700, #b8860b); color: #000; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease;">
+                Play Again
+            </button>
+        `;
+        document.body.appendChild(victoryScreen);
+        // Hide all targets and stop spawning
+        this.targets.forEach(target => target.hide());
+        this.stopSpawning();
     }
 }
 
