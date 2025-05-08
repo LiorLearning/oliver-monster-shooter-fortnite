@@ -257,31 +257,68 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateUniqueMultiplicationQuestions(count) {
+function generateUniqueMathQuestions(count) {
   const questions = [];
   const used = new Set();
+  
   while (questions.length < count) {
-    const a = getRandomInt(6, 20); // Reasonable range for fun
-    const b = getRandomInt(2, 12);
-    const key = a < b ? `${a}x${b}` : `${b}x${a}`;
-    if (used.has(key)) continue;
-    used.add(key);
-    const correct = a * b;
-    // Generate 3 unique wrong answers
-    const wrongs = new Set();
-    while (wrongs.size < 3) {
-      let wrong = correct + getRandomInt(-20, 20);
-      if (wrong === correct || wrong <= 0) continue;
-      wrongs.add(wrong);
+    // Randomly choose between multiplication and division
+    const isMultiplication = Math.random() < 0.5;
+    
+    if (isMultiplication) {
+      // For multiplication, use numbers between 6-10 to avoid easy ones
+      const a = getRandomInt(6, 10);
+      const b = getRandomInt(6, 10);
+      const key = a < b ? `${a}x${b}` : `${b}x${a}`;
+      if (used.has(key)) continue;
+      used.add(key);
+      const correct = a * b;
+      
+      // Generate 3 unique wrong answers
+      const wrongs = new Set();
+      while (wrongs.size < 3) {
+        let wrong = correct + getRandomInt(-20, 20);
+        if (wrong === correct || wrong <= 0) continue;
+        wrongs.add(wrong);
+      }
+      
+      const allAnswers = Array.from(wrongs);
+      const correctIdx = getRandomInt(0, 3);
+      allAnswers.splice(correctIdx, 0, correct);
+      
+      questions.push({
+        q: `${a} × ${b} = ?`,
+        answers: allAnswers,
+        correct: correctIdx
+      });
+    } else {
+      // For division, ensure clean division with no remainders
+      const b = getRandomInt(6, 10); // divisor
+      const result = getRandomInt(6, 10); // quotient
+      const a = b * result; // dividend
+      
+      const key = `${a}/${b}`;
+      if (used.has(key)) continue;
+      used.add(key);
+      
+      // Generate 3 unique wrong answers
+      const wrongs = new Set();
+      while (wrongs.size < 3) {
+        let wrong = result + getRandomInt(-3, 3);
+        if (wrong === result || wrong <= 0) continue;
+        wrongs.add(wrong);
+      }
+      
+      const allAnswers = Array.from(wrongs);
+      const correctIdx = getRandomInt(0, 3);
+      allAnswers.splice(correctIdx, 0, result);
+      
+      questions.push({
+        q: `${a} ÷ ${b} = ?`,
+        answers: allAnswers,
+        correct: correctIdx
+      });
     }
-    const allAnswers = Array.from(wrongs);
-    const correctIdx = getRandomInt(0, 3);
-    allAnswers.splice(correctIdx, 0, correct);
-    questions.push({
-      q: `${a} × ${b} = ?`,
-      answers: allAnswers,
-      correct: correctIdx
-    });
   }
   return questions;
 }
@@ -320,7 +357,7 @@ window.showQuizPanel = function(callback) {
   root.innerHTML = '';
 
   // Generate 3 unique random questions for this session
-  const QUIZ_QUESTIONS = generateUniqueMultiplicationQuestions(3);
+  const QUIZ_QUESTIONS = generateUniqueMathQuestions(3);
 
   // Style root
   root.style.position = 'fixed';
