@@ -210,6 +210,10 @@ window.addEventListener('load', () => {
       <div class="intro-content">
         <div class="intro-title">MONSTER<br>HUNTER</div>
         <div class="intro-level">Level 1</div>
+        <div class="intro-username-container">
+          <label for="player-username" class="intro-username-label">Enter your username:</label>
+          <input type="text" id="player-username" class="intro-username-input" placeholder="Your username" required>
+        </div>
         <button class="intro-play-btn" id="intro-play-btn">PLAY</button>
         <div class="intro-creator">Created by OLIVER</div>
       </div>
@@ -235,6 +239,33 @@ window.addEventListener('load', () => {
 
     // Only start the game after Play is clicked
     document.getElementById('intro-play-btn').onclick = () => {
+        // Get the username from the input field
+        const usernameInput = document.getElementById('player-username');
+        const username = usernameInput.value.trim();
+        
+        // Validate username
+        if (!username) {
+            // Highlight the input with red border if empty
+            usernameInput.style.border = '2px solid red';
+            usernameInput.placeholder = 'Username is required';
+            return;
+        }
+        
+        // Store username in global variable for later use
+        window.playerUsername = username;
+        
+        // Save user to Supabase
+        if (window.GameData && window.GameData.saveUser) {
+            window.GameData.saveUser(username)
+                .then(result => {
+                    console.log('User saved to Supabase:', result);
+                })
+                .catch(error => {
+                    console.error('Error saving user to Supabase:', error);
+                });
+        }
+        
+        // Continue with game initialization
         intro.style.opacity = '0';
         setTimeout(() => {
             intro.style.display = 'none';
@@ -580,3 +611,122 @@ window.showQuizPanel = function(callback) {
   renderQuestion();
   root.appendChild(panel);
 };
+
+// Create feedback form after game completion
+function createFeedbackForm() {
+    const feedbackFormDiv = document.createElement('div');
+    feedbackFormDiv.id = 'feedback-form';
+    feedbackFormDiv.style.position = 'fixed';
+    feedbackFormDiv.style.top = '50%';
+    feedbackFormDiv.style.left = '50%';
+    feedbackFormDiv.style.transform = 'translate(-50%, -50%)';
+    feedbackFormDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    feedbackFormDiv.style.color = 'white';
+    feedbackFormDiv.style.padding = '30px';
+    feedbackFormDiv.style.borderRadius = '15px';
+    feedbackFormDiv.style.textAlign = 'left';
+    feedbackFormDiv.style.width = '500px';
+    feedbackFormDiv.style.maxWidth = '90vw';
+    feedbackFormDiv.style.maxHeight = '90vh';
+    feedbackFormDiv.style.overflowY = 'auto';
+    feedbackFormDiv.style.boxShadow = '0 0 25px rgba(0, 240, 255, 0.7)';
+    feedbackFormDiv.style.border = '2px solid #00f0ff';
+    feedbackFormDiv.style.zIndex = '100000';
+    
+    feedbackFormDiv.innerHTML = `
+        <h2 style="text-align: center; color: #00f0ff; margin-bottom: 20px; font-size: 28px;">
+            Game Feedback
+        </h2>
+        <form id="game-feedback-form">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">What did you think of the hero?</label>
+                <textarea name="hero" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">What did you think of the villain?</label>
+                <textarea name="villain" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">How was the gameplay?</label>
+                <textarea name="gameplay" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">What did you think of the setting?</label>
+                <textarea name="setting" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">What math topic would you like to see?</label>
+                <textarea name="mathTopic" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 16px;">Your Contact Info (optional):</label>
+                <textarea name="contactInfo" style="width: 100%; padding: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #00f0ff; border-radius: 5px; color: white; min-height: 60px; font-size: 14px;"></textarea>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button type="submit" style="background: linear-gradient(to bottom, #00f0ff, #0066cc); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; transition: all 0.2s;">
+                    Submit Feedback
+                </button>
+            </div>
+        </form>
+    `;
+    
+    document.body.appendChild(feedbackFormDiv);
+    
+    // Handle form submission
+    document.getElementById('game-feedback-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            hero: this.elements.hero.value || "Idk",
+            villain: this.elements.villain.value || "Idk",
+            gameplay: this.elements.gameplay.value || "Idk",
+            setting: this.elements.setting.value || "Idk",
+            mathTopic: this.elements.mathTopic.value || "Idk",
+            contactInfo: this.elements.contactInfo.value || "Idk",
+            user: window.playerUsername || "Unknown"
+        };
+        
+        // Submit to Supabase
+        if (window.GameData && window.GameData.saveFormSubmission) {
+            window.GameData.saveFormSubmission(formData)
+                .then(result => {
+                    console.log('Feedback saved to Supabase:', result);
+                    feedbackFormDiv.innerHTML = `
+                        <h2 style="text-align: center; color: #00f0ff; margin-bottom: 20px;">Thank You!</h2>
+                        <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">Your feedback has been submitted successfully.</p>
+                        <div style="text-align: center;">
+                            <button onclick="location.reload()" style="background: linear-gradient(to bottom, #ffe14b, #ffb800); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold;">
+                                Play Again
+                            </button>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error saving feedback to Supabase:', error);
+                    feedbackFormDiv.innerHTML = `
+                        <h2 style="text-align: center; color: red; margin-bottom: 20px;">Error</h2>
+                        <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">There was an error submitting your feedback. Please try again.</p>
+                        <div style="text-align: center;">
+                            <button onclick="location.reload()" style="background: linear-gradient(to bottom, #ffe14b, #ffb800); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold;">
+                                Play Again
+                            </button>
+                        </div>
+                    `;
+                });
+        }
+    });
+    
+    // Add hover effects to buttons
+    const buttons = feedbackFormDiv.querySelectorAll('button');
+    buttons.forEach(btn => {
+        btn.addEventListener('mouseover', () => {
+            btn.style.transform = 'scale(1.05)';
+        });
+        btn.addEventListener('mouseout', () => {
+            btn.style.transform = 'scale(1)';
+        });
+    });
+    
+    return feedbackFormDiv;
+}

@@ -501,8 +501,8 @@ class TargetManager {
                 <p style="font-size: 24px; margin: 0; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">COMING SOON</p>
                 <p style="font-size: 20px; margin: 10px 0;">Next level being designed by Oliver!</p>
             </div>
-            <button onclick="location.reload()" style="padding: 18px 36px; font-size: 22px; background: linear-gradient(to bottom, #ffd700, #b8860b); color: #000; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease;">
-                Play Again
+            <button id="continue-to-feedback" style="padding: 18px 36px; font-size: 22px; background: linear-gradient(to bottom, #ffd700, #ffb800); color: #000; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease;">
+                Continue
             </button>
         `;
         document.body.appendChild(victoryScreen);
@@ -516,6 +516,19 @@ class TargetManager {
         button.addEventListener('mouseout', () => {
             button.style.transform = 'scale(1)';
             button.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+        });
+        
+        // Show feedback form when continue button is clicked
+        button.addEventListener('click', () => {
+            document.body.removeChild(victoryScreen);
+            
+            // Call the feedback form function if it exists
+            if (typeof createFeedbackForm === 'function') {
+                createFeedbackForm();
+            } else {
+                console.error('createFeedbackForm function not found');
+                location.reload();
+            }
         });
         
         // Hide all targets and stop spawning
@@ -577,25 +590,69 @@ class TargetManager {
     gameOver() {
         this.gameActive = false;
         
+        // Release pointer lock
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+        
+        // Play game over sound if available
+        if (window.audioManager) {
+            window.audioManager.playSound('gameover');
+        }
+        
         const gameOverScreen = document.createElement('div');
         gameOverScreen.style.position = 'fixed';
         gameOverScreen.style.top = '50%';
         gameOverScreen.style.left = '50%';
         gameOverScreen.style.transform = 'translate(-50%, -50%)';
-        gameOverScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        gameOverScreen.style.color = 'red';
-        gameOverScreen.style.padding = '20px';
-        gameOverScreen.style.borderRadius = '10px';
+        gameOverScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+        gameOverScreen.style.color = '#ff3333';
+        gameOverScreen.style.padding = '30px';
+        gameOverScreen.style.borderRadius = '20px';
         gameOverScreen.style.textAlign = 'center';
+        gameOverScreen.style.width = '500px';
+        gameOverScreen.style.boxShadow = '0 0 30px 5px rgba(255, 0, 0, 0.3)';
+        gameOverScreen.style.border = '3px solid #ff3333';
+        gameOverScreen.style.zIndex = '99999';
+        
         gameOverScreen.innerHTML = `
-            <h1>GAME OVER</h1>
-            <p>Final Score: ${this.score}</p>
-            <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 10px; cursor: pointer;">
-                Try Again
+            <h1 style="font-size: 48px; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);">GAME OVER</h1>
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <div style="height: 4px; width: 80%; background: linear-gradient(90deg, transparent, #ff3333, transparent);"></div>
+            </div>
+            <p style="font-size: 26px; margin-bottom: 20px;">You were defeated!</p>
+            <p style="font-size: 28px; margin-bottom: 30px; font-weight: bold;">Final Score: <span style="color: #00f0ff; text-shadow: 0 0 5px #00f0ff;">${this.score}</span></p>
+            <button id="continue-to-feedback" style="padding: 18px 36px; font-size: 22px; background: linear-gradient(to bottom, #ff5533, #cc3300); color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease;">
+                Continue
             </button>
         `;
         document.body.appendChild(gameOverScreen);
         
+        // Add hover effect to button
+        const button = gameOverScreen.querySelector('button');
+        button.addEventListener('mouseover', () => {
+            button.style.transform = 'scale(1.05)';
+            button.style.boxShadow = '0 7px 20px rgba(0,0,0,0.4)';
+        });
+        button.addEventListener('mouseout', () => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+        });
+        
+        // Show feedback form when continue button is clicked
+        button.addEventListener('click', () => {
+            document.body.removeChild(gameOverScreen);
+            
+            // Call the feedback form function if it exists
+            if (typeof createFeedbackForm === 'function') {
+                createFeedbackForm();
+            } else {
+                console.error('createFeedbackForm function not found');
+                location.reload();
+            }
+        });
+        
+        // Hide all targets and stop spawning
         this.targets.forEach(target => target.hide());
         this.stopSpawning();
     }
