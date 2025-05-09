@@ -12,7 +12,7 @@ class MonsterTarget {
         
         // Scale health and speed based on wave number
         this.health = 100 + (waveNumber * 20); // Increase health for later waves
-        this.baseSpeed = 0.04 + (waveNumber * 0.005); // Slightly increase speed
+        this.baseSpeed = 0.04 + (waveNumber * 0.01); // Updated speed scaling
         this.speed = this.baseSpeed;
         this.damageTimer = 0;
         
@@ -24,7 +24,7 @@ class MonsterTarget {
         this.dodgeCooldown = Math.max(800 - (waveNumber * 50), 500); // Reduce dodge cooldown (more frequent dodges)
         this.movementState = 'pursue';
         this.dodgeDirection = new THREE.Vector3();
-        this.aggressionLevel = 0.3 + Math.random() * 0.3 + (waveNumber * 0.1); // Increase aggression
+        this.aggressionLevel = 0.3 + Math.random() * 0.3 + (waveNumber * 0.1); // Keep aggression scaling the same
         
         // Animation variables
         this.breathTime = 0;
@@ -229,7 +229,22 @@ class MonsterTarget {
         );
         moveDirection.add(randomVariation).normalize();
         
-        this.sprite.position.add(moveDirection.multiplyScalar(this.speed));
+        // Calculate new position
+        const newPosition = this.sprite.position.clone().add(moveDirection.multiplyScalar(this.speed));
+        
+        // Check wall collisions
+        const houseSize = 40;
+        const monsterRadius = 1.25; // Half of the monster's scale (2.5/2)
+        
+        // Keep monster within house bounds
+        newPosition.x = Math.max(-houseSize/2 + monsterRadius, Math.min(houseSize/2 - monsterRadius, newPosition.x));
+        newPosition.z = Math.max(-houseSize/2 + monsterRadius, Math.min(houseSize/2 - monsterRadius, newPosition.z));
+        
+        // Keep monster above floor level (y = 1.5)
+        newPosition.y = Math.max(1.5, newPosition.y);
+        
+        // Update position
+        this.sprite.position.copy(newPosition);
         this.sprite.lookAt(playerPosition);
         
         if (distanceToPlayer < 2.0 && Date.now() - this.damageTimer > 700) {
@@ -252,7 +267,7 @@ class TargetManager {
         this.minSpawnDistance = 6;
         this.gameActive = true;
         this.waveSize = 5; // Fixed number of monsters per wave
-        this.totalWaves = 5; // Total number of waves to complete the game
+        this.totalWaves = 3; // Changed to 3 total waves
         this.monstersKilledInWave = 0;
         this.monstersSpawnedInWave = 0;
         this.waveCooldown = 5000; // 5 seconds between waves
@@ -271,13 +286,11 @@ class TargetManager {
         document.body.appendChild(this.monstersRemainingElement);
         this.updateMonstersRemaining();
         
-        // Monster sprite files for each wave
+        // Updated monster sprite files for each wave
         this.monsterSprites = [
-            'assets/monster_sprite.png',
-            'assets/monster_sprite_2.png',
-            'assets/monster_sprite_3.png',
-            'assets/monster_sprite_4.png',
-            'assets/monster_sprite_5.png'
+            'assets/monster_sprite.png',    // Wave 1
+            'assets/monster_sprite_2.png',  // Wave 2
+            'assets/monster_sprite_5.png'   // Wave 3 (Final Boss)
         ];
         
         // Create potential spawn positions (we'll filter these based on player position)

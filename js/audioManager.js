@@ -12,6 +12,7 @@ class AudioManager {
         this.loadSound('health', 'assets/health.mp3');
         this.loadSound('answer', 'assets/answer.mp3');
         this.loadSound('bgm', 'assets/bgm.mp3');
+        this.loadSound('empty', 'assets/empty.mp3'); // Empty gun click sound
     }
 
     loadSound(name, url) {

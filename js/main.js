@@ -56,18 +56,23 @@ function init() {
     // Add shooting event listener
     document.addEventListener('keydown', (event) => {
         if (event.key.toLowerCase() === 'e') {
-            player.shoot(scene, targetManager);
-            // Play shotgun sound
-            audioManager.playSound('shotgun');
-            // Trigger shotgun recoil
-            const shotgun = document.getElementById('shotgun');
-            if (shotgun) {
-                shotgun.classList.remove('recoil'); // Reset if already animating
-                // Force reflow to restart animation
-                void shotgun.offsetWidth;
-                shotgun.classList.add('recoil');
-                // Remove class after animation
-                setTimeout(() => shotgun.classList.remove('recoil'), 180);
+            if (player.currentAmmo > 0) {
+                player.shoot(scene, targetManager);
+                // Play shotgun sound
+                audioManager.playSound('shotgun');
+                // Trigger shotgun recoil
+                const shotgun = document.getElementById('shotgun');
+                if (shotgun) {
+                    shotgun.classList.remove('recoil'); // Reset if already animating
+                    // Force reflow to restart animation
+                    void shotgun.offsetWidth;
+                    shotgun.classList.add('recoil');
+                    // Remove class after animation
+                    setTimeout(() => shotgun.classList.remove('recoil'), 180);
+                }
+            } else {
+                // Play empty gun sound
+                audioManager.playSound('empty');
             }
         }
     });
@@ -433,34 +438,61 @@ window.showQuizPanel = function(callback) {
         btn.style.boxShadow = '0 0 12px #00f0ff88';
         btn.style.cursor = 'pointer';
         btn.style.transition = 'background 0.2s, transform 0.1s';
-        if (selected[step] !== undefined) {
+        
+        // Track attempts for this question
+        if (!q.attempts) q.attempts = 0;
+        
+        if (q.attempts >= 2) {
             btn.disabled = true;
             btn.style.background = '#222e3c';
             btn.style.color = '#aaa';
             btn.style.cursor = 'not-allowed';
             btn.style.transform = 'scale(0.98)';
         }
+        
         btn.onclick = () => {
-            if (selected[step] !== undefined) return;
-            selected[step] = idx;
-            btn.style.background = '#222e3c';
-            btn.style.color = '#aaa';
-            btn.style.cursor = 'not-allowed';
-            btn.style.transform = 'scale(0.98)';
+            if (q.attempts >= 2) return;
             
-            // Play answer sound if correct
-            if (QUIZ_QUESTIONS[step].correct === idx && window.audioManager) {
-                window.audioManager.playSound('answer');
-            }
+            q.attempts++;
+            const isCorrect = QUIZ_QUESTIONS[step].correct === idx;
             
-            setTimeout(() => {
-                if (step < QUIZ_QUESTIONS.length - 1) {
-                    step++;
-                    renderQuestion();
-                } else {
-                    renderCalculation();
+            if (isCorrect) {
+                // Play answer sound if correct
+                if (window.audioManager) {
+                    window.audioManager.playSound('answer');
                 }
-            }, 350);
+                selected[step] = idx;
+                btn.style.background = '#222e3c';
+                btn.style.color = '#aaa';
+                btn.style.cursor = 'not-allowed';
+                btn.style.transform = 'scale(0.98)';
+                
+                setTimeout(() => {
+                    if (step < QUIZ_QUESTIONS.length - 1) {
+                        step++;
+                        renderQuestion();
+                    } else {
+                        renderCalculation();
+                    }
+                }, 350);
+            } else {
+                // Wrong answer
+                btn.style.background = '#ff4444';
+                btn.style.boxShadow = '0 0 12px #ff444488';
+                
+                if (q.attempts >= 2) {
+                    // On second wrong attempt, lock the answer and move on
+                    selected[step] = idx;
+                    setTimeout(() => {
+                        if (step < QUIZ_QUESTIONS.length - 1) {
+                            step++;
+                            renderQuestion();
+                        } else {
+                            renderCalculation();
+                        }
+                    }, 350);
+                }
+            }
         };
         answers.appendChild(btn);
     });

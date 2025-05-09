@@ -120,6 +120,13 @@
             z-index: 99;
             user-select: none;
         }
+
+        /* Specific styling for no-ammo image */
+        #shotgun[src*="no-ammo.png"] {
+            bottom: -80px; /* Adjust this value to move the no-ammo image up/down */
+            width: 380px; /* Adjust this value to change the size of the no-ammo image */
+        }
+
         @keyframes shotgun-recoil {
             0% { transform: translateX(-50%) translateY(0) scale(1) rotate(-2deg); }
             10% { transform: translateX(-50%) translateY(10px) scale(1.04) rotate(-4deg); }

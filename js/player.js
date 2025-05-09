@@ -332,11 +332,6 @@ class Player {
     
     // Method to handle shooting
     shoot(scene, targetManager) {
-        if (this.currentAmmo <= 0) {
-            // Play empty sound or show message
-            return;
-        }
-
         this.currentAmmo--;
         this.updateAmmoUI();
 
@@ -368,6 +363,12 @@ class Player {
             this.ammoElement.textContent = this.currentAmmo;
             this.ammoElement.classList.add('changed');
             setTimeout(() => this.ammoElement.classList.remove('changed'), 300);
+            
+            // Update shotgun image based on ammo
+            const shotgun = document.getElementById('shotgun');
+            if (shotgun) {
+                shotgun.src = this.currentAmmo > 0 ? 'assets/shotgun_first_person.png' : 'assets/no-ammo.png';
+            }
         }
     }
 
