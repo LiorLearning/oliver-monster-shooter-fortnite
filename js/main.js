@@ -356,32 +356,98 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateUniqueMultiplicationQuestions(count) {
+function generateFractionQuestions(count) {
   const questions = [];
   const used = new Set();
-  while (questions.length < count) {
-    const a = getRandomInt(6, 20); // Reasonable range for fun
-    const b = getRandomInt(2, 12);
-    const key = a < b ? `${a}x${b}` : `${b}x${a}`;
+  
+  // Calculate number of questions for each category
+  const equivalentCount = Math.floor(count * 0.4); // 40% for equivalent fractions
+  const sameNumDenomCount = Math.floor(count * 0.4); // 40% for same numerator/denominator
+  const differentDenomCount = count - equivalentCount - sameNumDenomCount; // 20% for different denominators
+  
+  // Generate equivalent fraction questions
+  while (questions.length < equivalentCount) {
+    const num = getRandomInt(1, 5);
+    const denom = getRandomInt(2, 10);
+    const multiplier = getRandomInt(2, 4);
+    const key = `${num}/${denom}`;
     if (used.has(key)) continue;
     used.add(key);
-    const correct = a * b;
-    // Generate 3 unique wrong answers
+    
+    const correct = `${num * multiplier}/${denom * multiplier}`;
     const wrongs = new Set();
     while (wrongs.size < 3) {
-      let wrong = correct + getRandomInt(-20, 20);
-      if (wrong === correct || wrong <= 0) continue;
-      wrongs.add(wrong);
+      const wrongNum = num * multiplier + getRandomInt(-2, 2);
+      const wrongDenom = denom * multiplier + getRandomInt(-2, 2);
+      if (wrongNum <= 0 || wrongDenom <= 0 || wrongNum === num * multiplier || wrongDenom === denom * multiplier) continue;
+      wrongs.add(`${wrongNum}/${wrongDenom}`);
     }
+    
     const allAnswers = Array.from(wrongs);
     const correctIdx = getRandomInt(0, 3);
     allAnswers.splice(correctIdx, 0, correct);
+    
     questions.push({
-      q: `${a} × ${b} = ?`,
+      q: `Which fraction is equivalent to ${num}/${denom}?`,
       answers: allAnswers,
       correct: correctIdx
     });
   }
+  
+  // Generate same numerator/denominator comparison questions
+  while (questions.length < equivalentCount + sameNumDenomCount) {
+    const type = Math.random() < 0.5 ? 'numerator' : 'denominator';
+    const common = getRandomInt(2, 8);
+    const num1 = type === 'numerator' ? common : getRandomInt(1, 5);
+    const num2 = type === 'numerator' ? common : getRandomInt(1, 5);
+    const denom1 = type === 'denominator' ? common : getRandomInt(2, 8);
+    const denom2 = type === 'denominator' ? common : getRandomInt(2, 8);
+    
+    const key = `${num1}/${denom1}-${num2}/${denom2}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    
+    const correct = num1/denom1 > num2/denom2 ? '>' : '<';
+    const wrongs = new Set(['>', '<', '=']);
+    wrongs.delete(correct);
+    
+    const allAnswers = Array.from(wrongs);
+    const correctIdx = getRandomInt(0, 2);
+    allAnswers.splice(correctIdx, 0, correct);
+    
+    questions.push({
+      q: `Compare: ${num1}/${denom1} ? ${num2}/${denom2}`,
+      answers: allAnswers,
+      correct: correctIdx
+    });
+  }
+  
+  // Generate different denominator comparison questions
+  while (questions.length < count) {
+    const num1 = getRandomInt(1, 5);
+    const num2 = getRandomInt(1, 5);
+    const denom1 = getRandomInt(2, 8);
+    const denom2 = getRandomInt(2, 8);
+    
+    const key = `${num1}/${denom1}-${num2}/${denom2}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    
+    const correct = num1/denom1 > num2/denom2 ? '>' : '<';
+    const wrongs = new Set(['>', '<', '=']);
+    wrongs.delete(correct);
+    
+    const allAnswers = Array.from(wrongs);
+    const correctIdx = getRandomInt(0, 2);
+    allAnswers.splice(correctIdx, 0, correct);
+    
+    questions.push({
+      q: `Compare: ${num1}/${denom1} ? ${num2}/${denom2}`,
+      answers: allAnswers,
+      correct: correctIdx
+    });
+  }
+  
   return questions;
 }
 
@@ -419,7 +485,7 @@ window.showQuizPanel = function(callback) {
   root.innerHTML = '';
 
   // Generate 3 unique random questions for this session
-  const QUIZ_QUESTIONS = generateUniqueMultiplicationQuestions(3);
+  const QUIZ_QUESTIONS = generateFractionQuestions(3);
 
   // Style root
   root.style.position = 'fixed';
