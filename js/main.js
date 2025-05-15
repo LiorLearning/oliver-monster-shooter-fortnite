@@ -298,23 +298,23 @@ function generateUniqueMathQuestions(count) {
   const used = new Set();
   
   while (questions.length < count) {
-    // Randomly choose between multiplication and division
-    const isMultiplication = Math.random() < 0.5;
+    // 70% chance of addition, 30% chance of subtraction
+    const isAddition = Math.random() < 0.7;
     
-    if (isMultiplication) {
-      // For multiplication, use numbers between 6-10 to avoid easy ones
-      const a = getRandomInt(6, 10);
-      const b = getRandomInt(6, 10);
-      const key = a < b ? `${a}x${b}` : `${b}x${a}`;
+    if (isAddition) {
+      // For addition, use numbers that sum up to 20 or less
+      const a = getRandomInt(1, 10);
+      const b = getRandomInt(1, 20 - a); // Ensure sum doesn't exceed 20
+      const key = a < b ? `${a}+${b}` : `${b}+${a}`;
       if (used.has(key)) continue;
       used.add(key);
-      const correct = a * b;
+      const correct = a + b;
       
       // Generate 3 unique wrong answers
       const wrongs = new Set();
       while (wrongs.size < 3) {
-        let wrong = correct + getRandomInt(-20, 20);
-        if (wrong === correct || wrong <= 0) continue;
+        let wrong = correct + getRandomInt(-3, 3);
+        if (wrong === correct || wrong <= 0 || wrong > 20) continue;
         wrongs.add(wrong);
       }
       
@@ -323,34 +323,33 @@ function generateUniqueMathQuestions(count) {
       allAnswers.splice(correctIdx, 0, correct);
       
       questions.push({
-        q: `${a} × ${b} = ?`,
+        q: `${a} + ${b} = ?`,
         answers: allAnswers,
         correct: correctIdx
       });
     } else {
-      // For division, ensure clean division with no remainders
-      const b = getRandomInt(6, 10); // divisor
-      const result = getRandomInt(6, 10); // quotient
-      const a = b * result; // dividend
-      
-      const key = `${a}/${b}`;
+      // For subtraction, ensure result is positive and within 20
+      const a = getRandomInt(1, 20);
+      const b = getRandomInt(1, a); // Ensure result is positive
+      const key = `${a}-${b}`;
       if (used.has(key)) continue;
       used.add(key);
+      const correct = a - b;
       
       // Generate 3 unique wrong answers
       const wrongs = new Set();
       while (wrongs.size < 3) {
-        let wrong = result + getRandomInt(-3, 3);
-        if (wrong === result || wrong <= 0) continue;
+        let wrong = correct + getRandomInt(-3, 3);
+        if (wrong === correct || wrong < 0 || wrong > 20) continue;
         wrongs.add(wrong);
       }
       
       const allAnswers = Array.from(wrongs);
       const correctIdx = getRandomInt(0, 3);
-      allAnswers.splice(correctIdx, 0, result);
+      allAnswers.splice(correctIdx, 0, correct);
       
       questions.push({
-        q: `${a} ÷ ${b} = ?`,
+        q: `${a} - ${b} = ?`,
         answers: allAnswers,
         correct: correctIdx
       });
